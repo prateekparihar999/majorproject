@@ -1,35 +1,49 @@
+// init/index.js
+
+require("dotenv").config({ path: "../.env" }); 
 const mongoose = require("mongoose");
-const initData = require("./data.js"); //  exports an array directly
+const initData = require("./data.js");
 const Listing = require("../models/listing.js");
 
-const MONGO_URI = "mongodb://127.0.0.1:27017/wanderlust";
+// ✅ Use Atlas or local MongoDB as fallback
+const dbUrl = process.env.ATLAS_DB_URL ;
 
-async function main() {
-  await mongoose.connect(MONGO_URI);
-  console.log(" Connected to MongoDB");
+if (!dbUrl) {
+  console.error("❌ Error: MongoDB connection string not found. Please set ATLAS_DB_URL in your .env file.");
+  process.exit(1);
 }
 
+// 🧠 Connect to MongoDB
+async function main() {
+  try {
+    await mongoose.connect(dbUrl);
+    console.log("✅ Connected to MongoDB");
+  } catch (err) {
+    console.error("❌ Connection Error:", err);
+    process.exit(1);
+  }
+}
+
+// 🧹 Initialize DB
 const initDB = async () => {
   try {
     await Listing.deleteMany({});
+    console.log("🗑️ Old listings deleted");
 
-    //  use initData.map() (not initData.data.map)
     const listings = initData.map((obj) => ({
       ...obj,
-      owner: "68ebe65b44486898aacdaef6",
+      owner: "68ebe65b44486898aacdaef6", // replace with your actual user _id from MongoDB
     }));
 
     await Listing.insertMany(listings);
-    console.log(" Database initialized with data");
-
+    console.log(`🌱 Seeded ${listings.length} listings successfully!`);
   } catch (err) {
-    console.error(" Error initializing DB:", err);
+    console.error("❌ Error initializing DB:", err);
   } finally {
     await mongoose.connection.close();
-    console.log(" Connection closed");
+    console.log("🔒 MongoDB connection closed");
   }
 };
 
-main()
-  .then(() => initDB())
-  .catch((err) => console.error(" Connection Error:", err));
+// 🚀 Run
+main().then(initDB);
